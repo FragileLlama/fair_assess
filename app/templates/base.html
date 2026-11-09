@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ BRAND }}: Is your Cook County property tax assessment too high?{% endblock %}</title>
+  <meta name="description" content="Free check of your Cook County assessment against similar homes nearby, using the Assessor's own data. Get a ready-to-file appeal packet.">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top"><div class="in">
+    <a class="logo" href="/">{{ BRAND }}</a>
+    <nav><a href="/">Check my home</a><a href="/exemptions">Missed exemptions</a></nav>
+  </div></header>
+  <main>{% block content %}{% endblock %}</main>
+  <div id="loading" class="loading" hidden><div class="box"><div class="spin"></div><strong>Checking county records…</strong><span>Comparing your home to similar homes nearby. This takes about 10 seconds.</span></div></div>
+  <script>
+    function showLoading(){ document.getElementById('loading').hidden = false; }
+    document.querySelectorAll('form.search').forEach(f => f.addEventListener('submit', showLoading));
+    document.querySelectorAll('a[href^="/p/"]').forEach(a => a.addEventListener('click', showLoading));
+    window.addEventListener('pageshow', () => { document.getElementById('loading').hidden = true; });
+  </script>
+  <footer>
+    {{ BRAND }} is an independent service and is not affiliated with the Cook County Assessor, Board of Review, or any government agency.
+    Filing an appeal with the county is always free; you can file yourself at the county's own websites.
+    Estimates are based on public Assessor data and are not legal or tax advice.
+  </footer>
+</body>
+</html>

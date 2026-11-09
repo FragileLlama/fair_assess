@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+{% for w in open_windows() %}
+<div class="banner"><strong>Filing open now:</strong> {{ w.body }} appeals for {{ w.townships|sort|join(", ") }} townships close <strong>{{ w.closes.strftime("%B %-d") }}</strong>.</div>
+{% endfor %}
+
+<h1>Is your Cook County home assessed higher than your neighbors'?</h1>
+<p class="lead">Enter your address. In about 10 seconds we compare your assessment to similar homes in your neighborhood using the Assessor's own data, and tell you honestly whether an appeal is worth filing.</p>
+
+<form class="search" action="/search" method="get">
+  <input name="q" required placeholder="e.g. 1234 W 103rd St, Chicago, or a PIN" aria-label="Address or PIN" autofocus>
+  <button>Check my home</button>
+</form>
+<p class="muted">Houses and 2–6 unit buildings in Cook County. Condos coming soon.</p>
+
+<div class="grid3" style="margin-top:32px">
+  <div class="card"><h3>Free check</h3><p>We find the most similar homes in your assessment neighborhood and compare value per square foot, plus recent sales.</p></div>
+  <div class="card"><h3>Straight answer</h3><p>If your case is weak, we'll tell you. No point filing an appeal that won't win.</p></div>
+  <div class="card"><h3>Ready-to-file packet</h3><p>If you have a case, get a printable evidence packet and step-by-step instructions for filing it yourself, for free, with the county.</p></div>
+</div>
+
+<h2>How appeals work in Cook County</h2>
+<ol class="steps">
+  <li><strong>Assessor appeal:</strong> after your township's reassessment notice, you have about 30 days to appeal to the Assessor.</li>
+  <li><strong>Board of Review appeal:</strong> the second level. Each township gets a filing window between summer and December. Your free report shows how often appeals in your township actually won.</li>
+  <li><strong>State Property Tax Appeal Board (PTAB):</strong> if the Board of Review says no, you can go one level further.</li>
+</ol>
+<p class="muted">You can appeal every year, even when your township isn't being reassessed.</p>
+{% endblock %}

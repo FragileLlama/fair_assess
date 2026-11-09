@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Missed property tax exemptions in Cook County · {{ BRAND }}{% endblock %}
+{% block content %}
+<h1>Are you missing a property tax exemption?</h1>
+<p class="lead">Exemptions lower your bill every year, and if you qualified in past years but didn't receive one, you can apply for refunds for up to 3 prior years through a "Certificate of Error."</p>
+
+<div class="card">
+  <h3>Answer these questions:</h3>
+  <ol class="steps">
+    <li><strong>Do you live in the home as your main residence?</strong> You likely qualify for the <em>Homeowner Exemption</em>. Once granted it renews automatically, but it's commonly missing after a purchase or refinance.</li>
+    <li><strong>Are you (or your spouse) 65 or older?</strong> Look at the <em>Senior Exemption</em>. Many seniors who had it in the past stopped receiving it because they didn't reapply.</li>
+    <li><strong>Are you 65+ with a total household income at or below the state limit?</strong> The <em>Senior Assessment Freeze</em> can hold your assessed value steady. It requires an application each year.</li>
+    <li><strong>Do you have a disability, or are you a veteran with a disability?</strong> There are separate exemptions for persons with disabilities and for veterans with disabilities.</li>
+    <li><strong>Did you recently return from active military duty?</strong> See the <em>Returning Veterans' Exemption</em>.</li>
+    <li><strong>Have you lived in your home 10+ years in an area with rapidly rising values?</strong> Ask about the <em>Long-time Occupant Homeowner Exemption</em>.</li>
+  </ol>
+  <p>Check which exemptions appear on your most recent second-installment tax bill. If one you qualify for is missing, apply on the Cook County Assessor's website (cookcountyassessoril.gov → Exemptions). Applying is free.</p>
+  <p class="fineprint">Eligibility rules, income limits and deadlines change; confirm them on the Assessor's site. {{ BRAND }} isn't affiliated with Cook County.</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Check your assessment too</h3>
+  <form class="search" action="/search" method="get">
+    <input name="q" required placeholder="Your address or PIN" aria-label="Address or PIN"><button>Check my home</button>
+  </form>
+</div>
+{% endblock %}

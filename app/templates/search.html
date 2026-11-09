@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Which property is yours?</h1>
+<form class="search" action="/search" method="get">
+  <input name="q" value="{{ q }}" required aria-label="Address or PIN"><button>Search</button>
+</form>
+{% if matches %}
+<div class="table-wrap" style="margin-top:16px"><table>
+  <tr><th>Address</th><th>City</th><th>ZIP</th><th>PIN</th></tr>
+  {% for m in matches %}
+  <tr><td><a href="/p/{{ m.pin }}">{{ m.prop_address_full }}</a></td><td>{{ m.prop_address_city_name|title }}</td>
+      <td>{{ m.prop_address_zipcode_1 }}</td><td>{{ format_pin(m.pin) }}</td></tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="card">
+  <p>We couldn't find that address. Try the house number and street only (for example <em>1234 W 103rd St</em>), add the city after a comma, or search by PIN, the 14-digit number on your tax bill.</p>
+</div>
+{% endif %}
+{% endblock %}

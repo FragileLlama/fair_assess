@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Appeal packet: {{ fr.address }} · {{ BRAND }}{% endblock %}
+{% block content %}
+{% set v = r.value %}
+<div class="no-print banner green">
+  <strong>Your packet is ready.</strong> Print it or save it as a PDF (Ctrl/Cmd + P → "Save as PDF"), then follow the filing steps on the last page.
+  <button onclick="window.print()" style="margin-left:8px">Print / Save PDF</button>
+</div>
+
+<div class="card">
+  <p class="muted">Residential assessment appeal: supporting evidence</p>
+  <h1 style="font-size:28px">{{ fr.address|title }}, {{ fr.city|title }} IL {{ fr.zip }}</h1>
+  <div class="facts">
+    <div><span>PIN</span>{{ format_pin(fr.pin) }}</div>
+    <div><span>Township</span>{{ fr.township }}</div>
+    <div><span>Neighborhood</span>{{ fr.nbhd }}</div>
+    <div><span>Class</span>{{ fr.cls }}</div>
+    <div><span>Building sq ft</span>{{ r.subject.sqft|num }}</div>
+    <div><span>Year built</span>{{ r.subject.year_built or "—" }}</div>
+    <div><span>{{ v.year }} total AV ({{ v.stage }})</span>{{ v.total|money }}</div>
+    <div><span>Building / land AV</span>{{ v.bldg|money }} / {{ v.land|money }}</div>
+  </div>
+
+  <h2>Basis for appeal</h2>
+  {% for reason in r.reasons %}<p>{{ reason }}</p>{% endfor %}
+  {% if r.target_av %}
+  <p><strong>Requested total assessed value: {{ r.target_av|money }}</strong> (land {{ v.land|money }} + building at the comparable median of ${{ "%.2f"|format(r.median_rate) }}/sq ft × {{ r.subject.sqft|num }} sq ft).</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Comparable properties (lack of uniformity)</h2>
+  <p class="muted">Same assessment neighborhood and class, from the Cook County Assessor's {{ v.year }} published values and characteristics. Comparables assessed lower per square foot are in green. Choose at least 3–5 of the most similar for your filing.</p>
+  <div class="table-wrap"><table>
+    <tr><th>#</th><th>PIN</th><th>Address</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Ext. wall</th><th>Bsmt</th><th>Garage</th><th>Bldg AV</th><th>AV/sq ft</th></tr>
+    <tr class="subject"><td>—</td><td>{{ format_pin(fr.pin) }}</td><td>Subject</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ r.subject.exterior }}</td><td>{{ r.subject.basement }}</td><td>{{ r.subject.garage }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
+    {% for c in r.comps %}
+    <tr><td>{{ loop.index }}</td><td>{{ format_pin(c.pin) }}</td><td>{{ c.address|title }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td><td>{{ c.bldg.exterior }}</td><td>{{ c.bldg.basement }}</td><td>{{ c.bldg.garage }}</td><td>{{ c.value.bldg|money }}</td>
+        <td class="{{ 'lower' if c.bldg_av_per_sf < r.subject_rate }}">${{ "%.2f"|format(c.bldg_av_per_sf) }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% if r.median_rate %}<p>Median of comparables: <strong>${{ "%.2f"|format(r.median_rate) }}/sq ft</strong>. Subject: <strong>${{ "%.2f"|format(r.subject_rate) }}/sq ft</strong>.</p>{% endif %}
+</div>
+
+{% if r.own_sale or r.sales_estimate %}
+<div class="card">
+  <h2 style="margin-top:0">Market value evidence</h2>
+  <p>Residential property in Cook County is assessed at 10% of market value, so the {{ v.year }} assessment implies a market value of <strong>{{ r.implied_market_value|money }}</strong>.</p>
+  {% if r.own_sale %}<p>Recent purchase of this property: <strong>{{ r.own_sale.price|money }}</strong> on {{ r.own_sale.date.strftime("%B %-d, %Y") }}. Attach the closing statement (settlement statement), deed, and if available the MyDec transfer declaration.</p>{% endif %}
+  {% if r.sales_estimate %}<p>Median sale price per sq ft of {{ r.sales|selectattr("per_sf")|list|length }} recent sales of the same class in this neighborhood, applied to {{ r.subject.sqft|num }} sq ft: <strong>{{ r.sales_estimate|money }}</strong>.</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="card page-break">
+  <h2 style="margin-top:0">How to file (free, about 20 minutes)</h2>
+  {% if window.state == "open" %}<p><strong>Deadline: {{ window.window.closes.strftime("%A, %B %-d, %Y") }}</strong> for {{ fr.township }} Township at the Board of Review.</p>{% endif %}
+  <ol class="steps">
+    <li>Save this packet as a PDF (Print → Save as PDF).</li>
+    <li>Go to the Cook County Board of Review website, <strong>cookcountyboardofreview.com</strong>, and create a free account. Filing is free.</li>
+    <li>Start a new residential appeal for PIN <strong>{{ format_pin(fr.pin) }}</strong> during your township's filing window. Choose the reason that matches your evidence: lack of uniformity (comparables) and/or overvaluation (recent purchase or sales).</li>
+    <li>Enter at least 3–5 comparable PINs from the table above. Pick the most similar ones that are assessed lower than yours.</li>
+    <li>Upload this PDF as supporting evidence. Add photos of any condition problems (foundation, roof, water damage) and, if you bought recently, your closing statement.</li>
+    <li>Submit, and keep the confirmation number. The Board mails a written decision.</li>
+    <li>If the Board doesn't lower your value, you can appeal to the state Property Tax Appeal Board (PTAB), usually within 30 days of the Board's decision. Check the date on the decision letter.</li>
+  </ol>
+  <p class="fineprint">Prepared {{ today().strftime("%B %-d, %Y") }} by {{ BRAND }} from public Cook County Assessor data. {{ BRAND }} is not affiliated with Cook County, does not file on your behalf, and does not provide legal advice. Verify current filing rules and deadlines on the Board of Review's website before filing.</p>
+</div>
+{% endblock %}

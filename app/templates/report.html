@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ fr.address }}: assessment check · {{ BRAND }}{% endblock %}
+{% block content %}
+{% set v = r.value %}
+<p class="muted">PIN {{ format_pin(fr.pin) }} · {{ fr.township }} Township · Class {{ fr.cls }}</p>
+<h1>{{ fr.address|title }}{% if fr.city %}, {{ fr.city|title }}{% endif %}</h1>
+
+{% if window.state == "open" %}
+<div class="banner"><strong>Your Board of Review filing window is open.</strong> It closes {{ window.window.closes.strftime("%B %-d, %Y") }} ({{ window.days_left }} days left).</div>
+{% elif window.state == "upcoming" %}
+<div class="banner green">Your next filing window opens {{ window.window.opens.strftime("%B %-d, %Y") }}.</div>
+{% endif %}
+
+<div class="card verdict {{ r.verdict }}">
+  <div class="tag">
+    {% if r.verdict == "strong" %}Good case for an appeal{% elif r.verdict == "possible" %}Possible case{% elif r.verdict == "unlikely" %}Appeal unlikely to help{% else %}Not enough data{% endif %}
+  </div>
+  {% for reason in r.reasons %}<p>{{ reason }}</p>{% endfor %}
+  {% if r.av_reduction > 0 %}
+  <p><strong>Estimated savings if the appeal wins: {{ r.savings_low|money }} to {{ r.savings_high|money }} per year.</strong>
+  <span class="muted">Based on lowering your assessed value by about {{ r.av_reduction|money }}. Your actual savings depend on your tax rate and the Board's decision.</span></p>
+  {% endif %}
+</div>
+
+<div class="grid3">
+  <div class="card stat"><div class="n">{{ v.total|money }}</div><div class="l">{{ v.year }} assessed value ({{ v.stage }})</div></div>
+  <div class="card stat"><div class="n">{{ r.implied_market_value|money }}</div><div class="l">Market value the assessment implies</div></div>
+  <div class="card stat"><div class="n">${{ "%.2f"|format(r.subject_rate) }}</div><div class="l">Building value per sq ft{% if r.median_rate %} (similar homes: ${{ "%.2f"|format(r.median_rate) }}){% endif %}</div></div>
+</div>
+
+{% if r.verdict in ("strong", "possible") %}
+<div class="card no-print" id="packet">
+  <h2 style="margin-top:0">Get your ready-to-file appeal packet</h2>
+  <p>A printable evidence packet with your best comparable homes, the numbers the Board looks at, and step-by-step instructions to file yourself at no cost to you with the county.</p>
+  <form class="cta" method="post" action="/p/{{ fr.pin }}/packet">
+    <input type="email" name="email" required placeholder="Your email">
+    <button>Get my packet (free during launch)</button>
+  </form>
+  <p class="fineprint">We'll email you a copy and remind you when your next filing window opens. No spam.</p>
+</div>
+{% else %}
+<div class="card no-print">
+  <h3 style="margin-top:0">Want a reminder next year?</h3>
+  {% if request.query_params.get("reminder") %}<p><strong>Done. We'll email you when your township's next window opens.</strong></p>{% else %}
+  <p>Assessments change every year. We'll check again and email you when your township's appeal window opens.</p>
+  <form class="cta" method="post" action="/p/{{ fr.pin }}/packet">
+    <input type="hidden" name="kind" value="reminder">
+    <input type="email" name="email" required placeholder="Your email"><button>Remind me</button>
+  </form>{% endif %}
+</div>
+{% endif %}
+
+<h2>Your home vs. the most similar homes nearby</h2>
+<p class="muted">Same assessment neighborhood ({{ fr.nbhd }}) and property class, ranked by similarity in size, age, style, basement and garage. Values are the Assessor's {{ v.year }} building assessed values.</p>
+<div class="table-wrap"><table>
+  <tr><th>Address</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Building AV</th><th>AV / sq ft</th></tr>
+  <tr class="subject"><td>Your home</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
+  {% for c in r.comps[:5] %}
+  <tr><td>{{ c.address|title or format_pin(c.pin) }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td>
+      <td>{{ c.value.bldg|money }}</td><td class="{{ 'lower' if c.bldg_av_per_sf < r.subject_rate }}">${{ "%.2f"|format(c.bldg_av_per_sf) }}</td></tr>
+  {% endfor %}
+</table></div>
+{% if r.comps|length > 5 %}<p class="muted">+ {{ r.comps|length - 5 }} more comparable homes in the full packet.</p>{% endif %}
+
+<h2>How appeals have gone in {{ fr.township }} Township</h2>
+<div class="grid3">
+  {% if fr.bor_stats.total %}
+  <div class="card stat"><div class="n">{{ (100 * fr.bor_stats.won / fr.bor_stats.total)|round|int }}%</div>
+    <div class="l">of {{ fr.bor_stats.total|num }} residential Board of Review appeals won a reduction ({{ fr.bor_stats.year }})</div></div>
+  {% endif %}
+  {% if fr.assessor_stats.total %}
+  <div class="card stat"><div class="n">{{ (100 * fr.assessor_stats.won / fr.assessor_stats.total)|round|int }}%</div>
+    <div class="l">of {{ fr.assessor_stats.total|num }} residential Assessor appeals won a change ({{ fr.assessor_stats.year }})</div></div>
+  {% endif %}
+</div>
+
+<h2>Your assessment history</h2>
+<div class="table-wrap"><table>
+  <tr><th>Year</th><th>Assessor (mailed)</th><th>Assessor (certified)</th><th>Board of Review</th></tr>
+  {% for h in fr.history %}
+  <tr><td>{{ h.year }}</td><td>{{ (h.mailed_tot|float)|money if h.mailed_tot else "—" }}</td>
+      <td>{{ (h.certified_tot|float)|money if h.certified_tot else "—" }}</td><td>{{ (h.board_tot|float)|money if h.board_tot else "—" }}</td></tr>
+  {% endfor %}
+</table></div>
+{% if fr.own_appeals %}
+<p class="muted">Past appeals on this property: {% for a in fr.own_appeals %}{{ a.year|float|int }} ({{ a.status }}{% if a.change %}, {{ a.change }}{% endif %}){% if not loop.last %}; {% endif %}{% endfor %}.</p>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0">Also check: are you missing an exemption?</h3>
+  <p>Exemptions often save more than an appeal, and you can claim up to 3 past years. <a href="/exemptions">See which ones you may qualify for →</a></p>
+</div>
+{% endblock %}
