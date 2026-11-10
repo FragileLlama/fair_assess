@@ -16,6 +16,14 @@
     {% if r.verdict == "strong" %}Good case for an appeal{% elif r.verdict == "possible" %}Possible case{% elif r.verdict == "unlikely" %}Appeal unlikely to help{% else %}Not enough data{% endif %}
   </div>
   {% for reason in r.reasons %}<p>{{ reason }}</p>{% endfor %}
+  {% if r.caveats %}
+  <p class="muted" style="margin-bottom:4px"><strong>Why the Board might disagree:</strong></p>
+  <ul class="muted" style="margin-top:0">{% for c in r.caveats %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% set cal = calibration() %}{% set track = cal.get("by_verdict", {}).get(r.verdict) %}
+  {% if track and track.n >= 20 %}
+  <p class="muted">Track record: when we tested this model on {{ cal.sample }} real {{ cal.year }} Board of Review appeals, homes we rated this way won a reduction <strong>{{ (100 * track.rate)|round|int }}%</strong> of the time ({{ track.won }} of {{ track.n }}).</p>
+  {% endif %}
   {% if r.av_reduction > 0 %}
   <p><strong>Estimated savings if the appeal wins: {{ r.savings_low|money }} to {{ r.savings_high|money }} per year.</strong>
   <span class="muted">Based on lowering your assessed value by about {{ r.av_reduction|money }}. Your actual savings depend on your tax rate and the Board's decision.</span></p>
@@ -51,12 +59,12 @@
 {% endif %}
 
 <h2>Your home vs. the most similar homes nearby</h2>
-<p class="muted">Same assessment neighborhood ({{ fr.nbhd }}) and property class, ranked by similarity in size, age, style, basement and garage. Values are the Assessor's {{ v.year }} building assessed values.</p>
+<p class="muted">Same assessment neighborhood ({{ fr.nbhd }}) and property class, ranked by similarity in size, age, style, condition, basement, garage and distance. Values are the Assessor's {{ v.year }} building assessed values.</p>
 <div class="table-wrap"><table>
-  <tr><th>Address</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Building AV</th><th>AV / sq ft</th></tr>
-  <tr class="subject"><td>Your home</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
+  <tr><th>Address</th><th>Distance</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Building AV</th><th>AV / sq ft</th></tr>
+  <tr class="subject"><td>Your home</td><td>—</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
   {% for c in r.comps[:5] %}
-  <tr><td>{{ c.address|title or format_pin(c.pin) }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td>
+  <tr><td>{{ c.address|title or format_pin(c.pin) }}</td><td>{{ "%.1f mi"|format(c.distance_km * 0.621) if c.distance_km is not none else "—" }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td>
       <td>{{ c.value.bldg|money }}</td><td class="{{ 'lower' if c.bldg_av_per_sf < r.subject_rate }}">${{ "%.2f"|format(c.bldg_av_per_sf) }}</td></tr>
   {% endfor %}
 </table></div>

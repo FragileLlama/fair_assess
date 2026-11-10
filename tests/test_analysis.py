@@ -123,3 +123,42 @@ def test_window_status():
     assert s["state"] == "open" and s["days_left"] == 18
     assert W.status("Hyde Park", date(2026, 12, 9))["state"] == "closed"
     assert W.status("Rich", date(2026, 11, 20))["state"] == "closed"
+
+
+def test_distance_breaks_ties_toward_nearby_homes():
+    subj = bldg(1800)
+    subj.lat, subj.lon = 41.80, -87.60
+    near, far = bldg(1800), bldg(1800)
+    near.lat, near.lon = 41.801, -87.60  # ~0.1 km
+    far.lat, far.lon = 41.83, -87.60  # ~3.3 km
+    comps = A.pick_comps("me", subj, [("far", far, val(1)), ("near", near, val(1))])
+    assert [c.pin for c in comps] == ["near", "far"]
+    assert comps[0].distance_km < 0.2
+
+
+def test_renovated_subject_downgrades_strong_and_explains():
+    subj = bldg(1800)
+    subj.renovated = True
+    comps = A.pick_comps("me", subj, neighbors(rate=8.0))
+    r = A.analyze("me", subj, val(10.0 * 1800), comps, [], [], date(2026, 11, 9))
+    assert r.verdict == "possible"
+    assert any("renovated" in c for c in r.caveats)
+
+
+def test_better_condition_is_flagged():
+    subj = bldg(1800)
+    subj.condition = "Above Average"
+    comps = A.pick_comps("me", subj, neighbors(rate=8.0))
+    for c in comps:
+        c.bldg.condition = "Average"
+    r = A.analyze("me", subj, val(10.0 * 1800), comps, [], [], date(2026, 11, 9))
+    assert any("condition" in c for c in r.caveats)
+
+
+def test_chicago_uses_narrower_tax_rate_range():
+    subj = bldg(1800)
+    comps = A.pick_comps("me", subj, neighbors(rate=8.0))
+    r = A.analyze("me", subj, val(10.0 * 1800), comps, [], [], date(2026, 11, 9), in_chicago=True)
+    lo, hi = A.RATE_CHICAGO
+    assert r.savings_low == pytest.approx(r.av_reduction * A.EQUALIZER * lo)
+    assert r.savings_high == pytest.approx(r.av_reduction * A.EQUALIZER * hi)

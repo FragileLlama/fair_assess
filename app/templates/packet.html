@@ -32,10 +32,10 @@
   <h2 style="margin-top:0">Comparable properties (lack of uniformity)</h2>
   <p class="muted">Same assessment neighborhood and class, from the Cook County Assessor's {{ v.year }} published values and characteristics. Comparables assessed lower per square foot are in green. Choose at least 3–5 of the most similar for your filing.</p>
   <div class="table-wrap"><table>
-    <tr><th>#</th><th>PIN</th><th>Address</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Ext. wall</th><th>Bsmt</th><th>Garage</th><th>Bldg AV</th><th>AV/sq ft</th></tr>
-    <tr class="subject"><td>—</td><td>{{ format_pin(fr.pin) }}</td><td>Subject</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ r.subject.exterior }}</td><td>{{ r.subject.basement }}</td><td>{{ r.subject.garage }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
+    <tr><th>#</th><th>PIN</th><th>Address</th><th>Dist.</th><th>Sq ft</th><th>Built</th><th>Style</th><th>Ext. wall</th><th>Bsmt</th><th>Garage</th><th>Bldg AV</th><th>AV/sq ft</th></tr>
+    <tr class="subject"><td>—</td><td>{{ format_pin(fr.pin) }}</td><td>Subject</td><td>—</td><td>{{ r.subject.sqft|num }}</td><td>{{ r.subject.year_built or "—" }}</td><td>{{ r.subject.style }}</td><td>{{ r.subject.exterior }}</td><td>{{ r.subject.basement }}</td><td>{{ r.subject.garage }}</td><td>{{ v.bldg|money }}</td><td>${{ "%.2f"|format(r.subject_rate) }}</td></tr>
     {% for c in r.comps %}
-    <tr><td>{{ loop.index }}</td><td>{{ format_pin(c.pin) }}</td><td>{{ c.address|title }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td><td>{{ c.bldg.exterior }}</td><td>{{ c.bldg.basement }}</td><td>{{ c.bldg.garage }}</td><td>{{ c.value.bldg|money }}</td>
+    <tr><td>{{ loop.index }}</td><td>{{ format_pin(c.pin) }}</td><td>{{ c.address|title }}</td><td>{{ "%.1f mi"|format(c.distance_km * 0.621) if c.distance_km is not none else "—" }}</td><td>{{ c.bldg.sqft|num }}</td><td>{{ c.bldg.year_built or "—" }}</td><td>{{ c.bldg.style }}</td><td>{{ c.bldg.exterior }}</td><td>{{ c.bldg.basement }}</td><td>{{ c.bldg.garage }}</td><td>{{ c.value.bldg|money }}</td>
         <td class="{{ 'lower' if c.bldg_av_per_sf < r.subject_rate }}">${{ "%.2f"|format(c.bldg_av_per_sf) }}</td></tr>
     {% endfor %}
   </table></div>

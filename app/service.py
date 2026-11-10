@@ -64,7 +64,12 @@ def _sale(row: dict, sqft: float | None = None) -> A.Sale | None:
     return A.Sale(row["pin"], d, price, sqft)
 
 
-def build(pin: str, today: date | None = None) -> FullReport:
+def build(pin: str, today: date | None = None, year: int | None = None, light: bool = False) -> FullReport:
+    """Analyze a PIN.
+
+    year:  analyze a past assessment year as of the end of that year (for backtesting).
+    light: skip addresses and township stats (backtests don't need them).
+    """
     uni = C.universe(pin)
     if not uni:
         raise LookupError("We couldn't find that property in the Assessor's records.")
@@ -79,37 +84,53 @@ def build(pin: str, today: date | None = None) -> FullReport:
     f_hist = _pool.submit(C.assessed_history, pin)
     f_year = _pool.submit(C.latest_chars_year, pin)
     f_own_sales = _pool.submit(C.own_sales, pin)
-    f_own_appeals = _pool.submit(C.own_appeals, pin)
+    f_own_appeals = _pool.submit(C.own_appeals, pin) if not light else None
 
     history = f_hist.result()
     if not history:
         raise LookupError("No assessment on file for this property.")
+    if year is not None:
+        history = [h for h in history if int(float(h["year"])) <= year]
+        if not history or int(float(history[0]["year"])) != year:
+            raise LookupError(f"No {year} assessment on file for this property.")
+        today = today or date(year, 12, 31)
     latest = history[0]
     value = A.assessor_value(latest)
     if not value:
         raise LookupError("No assessed value has been published for this property yet.")
     nbhd = latest.get("nbhd") or uni.get("nbhd_code")
     tcode = uni.get("township_code") or latest.get("township_code", "")
-    f_stats = _pool.submit(township_stats, tcode, value.year)
+    f_stats = _pool.submit(township_stats, tcode, value.year) if not light else None
+    f_coords = _pool.submit(C.neighborhood_coords, nbhd, cls)
 
-    chars_year = f_year.result() or value.year
+    chars_year = year if year is not None else (f_year.result() or value.year)
     # Neighborhood values and sales don't depend on each other: fetch together.
     f_nb = _pool.submit(C.neighborhood_values, nbhd, cls, value.year)
     f_sales = _pool.submit(C.neighborhood_sales, nbhd, cls, value.year - 2)
     nb_rows, sale_rows = f_nb.result(), f_sales.result()
+    if year is not None:  # only sales that were known by the end of that year
+        sale_rows = [r for r in sale_rows if int(float(r.get("year", 0))) <= year]
 
     nb_values = {r["pin"]: A.assessor_value(r) for r in nb_rows}
     all_pins = list({pin, *nb_values, *(r["pin"] for r in sale_rows)})
     chars = C.characteristics(all_pins, chars_year)
 
-    subject = A.building(chars.get(pin, []), value.year)
+    coords = f_coords.result()
+
+    def bld(p: str) -> A.Building | None:
+        b = A.building(chars.get(p, []), value.year)
+        if b and p in coords:
+            b.lat, b.lon = coords[p]
+        return b
+
+    subject = bld(pin)
     if not subject:
         raise LookupError("The Assessor has no building characteristics on file for this property.")
 
     # Comparable homes: same neighborhood and class, same assessment year.
     neighbors = []
     for p, v in nb_values.items():
-        b = A.building(chars.get(p, []), value.year)
+        b = bld(p)
         if b and v:
             neighbors.append((p, b, v))
     comps = A.pick_comps(pin, subject, neighbors)
@@ -122,14 +143,21 @@ def build(pin: str, today: date | None = None) -> FullReport:
         if s:
             sales.append(s)
     own = [s for s in (_sale(r, subject.sqft) for r in f_own_sales.result()) if s]
+    if today:
+        own = [s for s in own if s.date <= today]
 
-    rep = A.analyze(pin, subject, value, comps, sales, own, today)
+    municipality = (uni.get("cook_municipality_name") or "").upper()
+    in_chicago = True if "CITY OF CHICAGO" in municipality else (False if municipality else None)
+    rep = A.analyze(pin, subject, value, comps, sales, own, today, in_chicago=in_chicago)
 
-    addrs = C.addresses([pin] + [c.pin for c in comps])
+    if light:
+        addrs, (assessor_stats, bor_stats) = {}, (_EMPTY_STATS, _EMPTY_STATS)
+    else:
+        addrs = C.addresses([pin] + [c.pin for c in comps])
+        assessor_stats, bor_stats = f_stats.result()
     for c in comps:
         c.address = addrs.get(c.pin, {}).get("prop_address_full", "")
     me = addrs.get(pin, {})
-    assessor_stats, bor_stats = f_stats.result()
 
     return FullReport(
         pin=pin,
@@ -143,7 +171,7 @@ def build(pin: str, today: date | None = None) -> FullReport:
         municipality=(uni.get("cook_municipality_name") or "").title(),
         report=rep,
         history=history,
-        own_appeals=f_own_appeals.result(),
+        own_appeals=f_own_appeals.result() if f_own_appeals else [],
         assessor_stats=assessor_stats,
         bor_stats=bor_stats,
     )

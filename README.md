@@ -37,10 +37,20 @@ Any host that runs a Dockerfile works. On Railway: New project → Deploy from G
 ## How it works
 
 - `app/cookdata.py`: Cook County open data client with caching and retries. The datasets are listed at the top.
-- `app/analysis.py`: picks comparable homes, runs the uniformity and market-value tests, produces the verdict and savings estimate. Pure functions, unit tested.
+- `app/analysis.py`: picks comparable homes (size, age, style, condition, quality, renovation, distance), runs the uniformity and market-value tests, flags caveats, and produces the verdict and savings estimate. Pure functions, unit tested.
 - `app/service.py`: fetches everything for a PIN, in parallel.
 - `app/windows.py`: **filing windows. Update every season** from the Board of Review and Assessor calendars.
 - `app/templates/`: landing page, report, packet, exemptions guide.
+
+## Measuring accuracy (backtest)
+
+`scripts/backtest.py` samples real residential appeals the Board of Review decided for a past year. It runs the model **as of that year**, using no later data, and compares each verdict to the Board's actual decision:
+
+```bash
+.venv/bin/python -m scripts.backtest --year 2025 --n 400 --write-calibration
+```
+
+With `--write-calibration` it saves win rates by verdict to `app/calibration.json`. The report then shows each user the measured track record for their verdict. Re-run it each year after the Board publishes new decisions.
 
 ## Known limits / roadmap
 

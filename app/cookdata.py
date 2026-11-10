@@ -29,6 +29,7 @@ DS_APPEALS = "y282-6ig3"  # Assessor - Appeals
 DS_BOR = "7pny-nedm"  # Board of Review Appeal Decision History
 
 CACHE_TTL = 24 * 3600
+STATS_TTL = 30 * 24 * 3600  # slow-changing data: appeal outcomes, parcel locations
 _CACHE_PATH = os.environ.get("CACHE_DB", "cache.db")
 _lock = threading.Lock()
 
@@ -188,6 +189,23 @@ def universe(pin: str) -> dict | None:
     return rows[0] if rows else None
 
 
+def neighborhood_coords(nbhd: str, cls: str) -> dict[str, tuple[float, float]]:
+    """pin -> (lat, lon) for every parcel of a class in a neighborhood."""
+    rows = query(
+        DS_UNIVERSE, _ttl=STATS_TTL,
+        where=f"nbhd_code={_q(nbhd)} AND class={_q(cls)}",
+        select="pin, lat, lon",
+        limit=10000,
+    )
+    out = {}
+    for r in rows:
+        try:
+            out[r["pin"]] = (float(r["lat"]), float(r["lon"]))
+        except (KeyError, TypeError, ValueError):
+            pass
+    return out
+
+
 def assessed_history(pin: str, limit: int = 6) -> list[dict]:
     return query(DS_ASSESSED, where=f"pin={_q(pin)}", order="year DESC", limit=limit)
 
@@ -241,7 +259,6 @@ def own_appeals(pin: str) -> list[dict]:
     return query(DS_APPEALS, where=f"pin={_q(pin)}", order="year DESC", limit=10)
 
 
-STATS_TTL = 30 * 24 * 3600  # appeal outcomes only change once a year
 
 
 def assessor_appeal_stats_all(year: int) -> dict[str, dict]:

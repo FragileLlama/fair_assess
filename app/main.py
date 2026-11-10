@@ -43,6 +43,17 @@ templates.env.globals.update(
 templates.env.filters["money"] = lambda v: f"${v:,.0f}" if v is not None else "—"
 templates.env.filters["num"] = lambda v: f"{v:,.0f}" if v is not None else "—"
 
+def calibration() -> dict:
+    """Backtest win rates by verdict (written by scripts/backtest.py)."""
+    try:
+        import json
+        return json.loads((BASE / "calibration.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+templates.env.globals["calibration"] = calibration
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
